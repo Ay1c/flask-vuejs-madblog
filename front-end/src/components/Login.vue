@@ -81,9 +81,9 @@ export default {
         return false
       }
 
-      const path = 'http://localhost:5000/api/tokens'
+      const path = '/tokens'
       // axios 实现Basic Auth需要在config中设置 auth 这个属性即可
-      axios.post(path, {}, {
+      this.$axios.post(path, {}, {
         auth: {
           'username': this.loginForm.username,
           'password': this.loginForm.password
@@ -93,6 +93,7 @@ export default {
           window.localStorage.setItem('madblog-token', response.data.token)
           store.resetNotNewAction()
           store.loginAction()
+          this.$toasted.success(`Welcome ${name}!`, { icon: 'fingerprint' })
           console.log('Login response:', response)
 
           if (typeof this.$route.query.redirect == 'undefined') {
