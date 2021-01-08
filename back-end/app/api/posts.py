@@ -1,4 +1,4 @@
-from flask import request, jsonify, url_for, g
+from flask import request, jsonify, url_for, g, current_app
 from app import db
 from app.api import bp
 from app.api.auth import token_auth
@@ -6,7 +6,7 @@ from app.api.errors import error_response, bad_request
 from app.models import Post
 
 
-@bp.route('/posts', methods=['Post'])
+@bp.route('/posts/', methods=['Post'])
 @token_auth.login_required
 def create_post():
     '''添加一篇新文章'''
@@ -34,13 +34,15 @@ def create_post():
     response.headers['Location'] = url_for('api.get_post', id=post.id)
     return response
 
-@bp.route('/posts', methods=['GET'])
+
+@bp.route('/posts/', methods=['GET'])
 def get_posts():
     '''返回文章集合，分页'''
     page = request.args.get('page', 1, type=int)
     per_page = min(request.args.get('per_page', 10, type=int), 100)
     data = Post.to_collection_dict(Post.query.order_by(Post.timestamp.desc()), page, per_page, 'api.get_posts')
     return jsonify(data)
+
 
 @bp.route('/posts/<int:id>', methods=['GET'])
 def get_post(id):
@@ -50,6 +52,7 @@ def get_post(id):
     db.session.add(post)
     db.session.commit()
     return jsonify(post.to_dict())
+
 
 @bp.route('/posts/<int:id>', methods=['PUT'])
 @token_auth.login_required
@@ -76,6 +79,7 @@ def update_post(id):
     post.from_dict(data)
     db.session.commit()
     return jsonify(post.to_dict())
+
 
 @bp.route('/posts/<int:id>', methods=['DELETE'])
 @token_auth.login_required

@@ -17,6 +17,7 @@ def bad_request(message):
     '''最常用的错误 400：错误的请求'''
     return error_response(400, message)
 
+
 @bp.app_errorhandler(404)
 def not_found_error(error):
     return error_response(404)
