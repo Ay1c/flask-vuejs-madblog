@@ -45,10 +45,10 @@
                 <router-link v-bind:to="{ name: 'UserFollowing' }" v-bind:active-class="'active'" class="nav-link">Following <span class="u-label g-font-size-11 g-bg-aqua g-rounded-20 g-px-10">{{ user.followeds_count }}</span></router-link>
               </li>
               <li class="nav-item">
-                <router-link v-bind:to="{ name: 'UserPostsList' }" v-bind:active-class="'active'" class="nav-link">Posts <span class="u-label g-font-size-11 g-bg-purple g-rounded-20 g-px-10">{{ user.posts_count }}</span></router-link>
+                <router-link v-bind:to="{ name: 'UserPosts' }" v-bind:active-class="'active'" class="nav-link">Posts <span class="u-label g-font-size-11 g-bg-purple g-rounded-20 g-px-10">{{ user.posts_count }}</span></router-link>
               </li>
               <li class="nav-item">
-                <router-link v-bind:to="{ name: 'UserFollowedsPostsList' }" v-bind:active-class="'active'" class="nav-link">FollowingPosts <span class="u-label g-font-size-11 g-bg-blue g-rounded-20 g-px-10">{{ user.followed_posts_count }}</span></router-link>
+                <router-link v-bind:to="{ name: 'UserFollowingPosts' }" v-bind:active-class="'active'" class="nav-link">FollowingPosts <span class="u-label g-font-size-11 g-bg-blue g-rounded-20 g-px-10">{{ user.followed_posts_count }}</span></router-link>
               </li>
             </ul>
 

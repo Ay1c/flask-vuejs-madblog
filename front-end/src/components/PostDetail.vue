@@ -117,26 +117,6 @@
             
           </div>
 
-          <div id="like-post" class="row">
-            <div class="col-lg-3">
-              <button v-on:click="onLikeOrUnlikePost(post)" v-bind:class="btnOutlineColor" class="btn btn-block g-rounded-50 g-py-12 g-mb-10">
-                <i class="icon-heart g-pos-rel g-top-1 g-mr-5"></i> 喜欢<span v-if="post.likers_id && post.likers_id.length > 0"> | {{ post.likers_id.length }}</span>
-              </button>
-            </div>
-            <div class="col-lg-9">
-              <ul v-if="post.likers" class="list-inline mb-0">
-                <li class="list-inline-item"
-                  v-for="(liker, index) in post.likers" v-bind:key="index">
-                  <router-link
-                    v-bind:to="{ path: `/user/${liker.id}` }"
-                    v-bind:title="liker.name || liker.username">
-                    <img class="g-brd-around g-brd-gray-light-v3 g-pa-2 g-width-40 g-height-40 rounded-circle rounded mCS_img_loaded g-mt-3" v-bind:src="liker.avatar" v-bind:alt="liker.name || liker.username">
-                  </router-link>
-                </li>
-              </ul>
-            </div>
-          </div>
-
         </article>
 
         <!-- Pre / Next -->
@@ -226,7 +206,7 @@
             <div v-for="(comment, index) in comments.items" v-bind:key="index">
               <div v-bind:id="'c' + comment.id" class="comment-item media g-brd-around g-brd-gray-light-v4 g-pa-30 g-mb-20">
                 <router-link v-bind:to="{ path: `/user/${comment.author.id}` }">  
-                  <img class="d-flex g-width-50 g-height-50 rounded-circle g-brd-around g-brd-gray-light-v4 g-pa-2 g-mt-3 g-mr-15" v-bind:src="comment.author.avatar" v-bind:alt="comment.author.name || comment.author.username">
+                  <img class="d-flex g-width-50 g-height-50 rounded-circle g-mt-3 g-mr-15" v-bind:src="comment.author.avatar" v-bind:alt="comment.author.name || comment.author.username">
                 </router-link>
                 <div class="media-body">
                   <div class="g-mb-15">
@@ -248,7 +228,7 @@
 
                   <ul class="list-inline d-sm-flex my-0">
                     <li v-if="!comment.disabled" class="list-inline-item g-mr-20">
-                      <a v-on:click="onLikeOrUnlikeComment(comment)" class="u-link-v5 g-color-gray-dark-v4 g-color-primary--hover" href="javascript:;">
+                      <a v-on:click="onLikeOrUnlike(comment)" class="u-link-v5 g-color-gray-dark-v4 g-color-primary--hover" href="javascript:;">
                         <i v-bind:class="{ 'g-color-red': comment.likers_id.indexOf(sharedState.user_id) != -1 }" class="icon-like g-pos-rel g-top-1 g-mr-3"></i>
                         <span v-if="comment.likers_id.length > 0"> {{ comment.likers_id.length }} 人赞</span>
                         <span v-else>赞</span>
@@ -279,12 +259,12 @@
               </div>
 
               <!-- 子级评论，按时间正序排列 -->
-              <div v-if="comment.descendants">
               <div class="g-ml-40 comment-item media g-brd-around g-brd-gray-light-v4 g-pa-30 g-mb-20"
+                  v-if="comment.descendants"
                   v-for="(child, cindex) in comment.descendants" v-bind:key="cindex"
                   v-bind:id="'c' + child.id">
                 <router-link v-bind:to="{ path: `/user/${child.author.id}` }">  
-                  <img class="d-flex g-width-50 g-height-50 rounded-circle g-brd-around g-brd-gray-light-v4 g-pa-2 g-mt-3 g-mr-15" v-bind:src="child.author.avatar" v-bind:alt="child.author.name || child.author.username">
+                  <img class="d-flex g-width-50 g-height-50 rounded-circle g-mt-3 g-mr-15" v-bind:src="child.author.avatar" v-bind:alt="child.author.name || child.author.username">
                 </router-link>
                 <div class="media-body">
                   <div class="g-mb-15">
@@ -306,7 +286,7 @@
 
                   <ul class="list-inline d-sm-flex my-0">
                     <li v-if="!child.disabled" class="list-inline-item g-mr-20">
-                      <a v-on:click="onLikeOrUnlikeComment(child)" class="u-link-v5 g-color-gray-dark-v4 g-color-primary--hover" href="javascript:;">
+                      <a v-on:click="onLikeOrUnlike(child)" class="u-link-v5 g-color-gray-dark-v4 g-color-primary--hover" href="javascript:;">
                         <i v-bind:class="{ 'g-color-red': child.likers_id.indexOf(sharedState.user_id) != -1 }" class="icon-like g-pos-rel g-top-1 g-mr-3"></i>
                         <span v-if="child.likers_id.length > 0"> {{ child.likers_id.length }} 人赞</span>
                         <span v-else>赞</span>
@@ -334,7 +314,6 @@
                     </ul>
                   </ul>
                 </div>
-              </div>
               </div>
             </div>
 
@@ -376,7 +355,8 @@
 import store from '../store'
 // 导入 vue-markdown 组件解析 markdown 原文为　HTML
 import VueMarkdown from 'vue-markdown'
-// 分页子组件
+// 评论子组件和分页子组件
+import Comment from './Base/Comment'
 import Pagination from './Base/Pagination'
 // vue-router 从 Home 页路由到 Post 页后，会重新渲染并且会移除事件，自定义的指令 v-highlight 也不生效了
 // 所以，这个页面，在 mounted() 和 updated() 方法中调用 highlightCode() 可以解决代码不高亮问题
@@ -393,6 +373,7 @@ export default {
   name: 'Post',
   components: {
     VueMarkdown,
+    Comment,
     Pagination
   },
   data() {
@@ -421,19 +402,6 @@ export default {
         body: '',
         errors: 0,  // 表单是否在前端验证通过，0 表示没有错误，验证通过
         bodyError: null
-      }
-    }
-  },
-  computed: {
-    btnOutlineColor: function () {
-      if (this.sharedState.is_authenticated) {
-        if (this.post.likers_id && this.post.likers_id.indexOf(this.sharedState.user_id) != -1) {
-          return 'u-btn-outline-red'
-        } else {
-          return 'u-btn-outline-primary'
-        }
-      } else {
-        return 'u-btn-outline-primary'
       }
     }
   },
@@ -550,34 +518,6 @@ export default {
         }
       })
     },
-    onLikeOrUnlikePost (post) {
-      // 用户需要先登录
-      if (!this.sharedState.is_authenticated) {
-        this.$toasted.error('您需要先登录才能收藏文章 ...', { icon: 'fingerprint' })
-        this.$router.replace({
-          path: '/login',
-          query: { redirect: this.$route.path + '#like-post' }
-        })
-      }
-      let path = ''
-      if (post.likers_id.indexOf(this.sharedState.user_id) != -1) {
-        // 当前登录用户已收藏过该文章，再次点击则取消收藏
-        path = `/posts/${post.id}/unlike`
-      } else {
-        path = `/posts/${post.id}/like`
-      }
-      this.$axios.get(path)
-        .then((response) => {
-          // handle success
-          this.getPost(this.$route.params.id)
-          this.$toasted.success(response.data.message, { icon: 'fingerprint' })
-        })
-        .catch((error) => {
-          // handle error
-          console.log(error.response.data)
-          this.$toasted.error(error.response.data.message, { icon: 'fingerprint' })
-        })
-    },
     getPostComments (id) {
       let page = 1
       let per_page = 10
@@ -602,7 +542,7 @@ export default {
           console.error(error)
         })
     },
-    onLikeOrUnlikeComment (comment) {
+    onLikeOrUnlike (comment) {
       // 用户需要先登录
       if (!this.sharedState.is_authenticated) {
         this.$toasted.error('您需要先登录才能点赞 ...', { icon: 'fingerprint' })

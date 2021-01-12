@@ -4,7 +4,7 @@ import os
 import sys
 from app import create_app
 from app import db
-from app.models import User, Post
+from app.models import User, Post, Comment
 from config import Config
 
 app = create_app(Config)
@@ -19,7 +19,7 @@ if os.environ.get('FLASK_COVERAGE'):
 
 @app.shell_context_processor
 def make_shell_context():
-    return {'db': db, 'User': User}
+    return {'db': db, 'User': User, 'Post': Post, 'Comment': Comment}
 
 
 @app.cli.command()
