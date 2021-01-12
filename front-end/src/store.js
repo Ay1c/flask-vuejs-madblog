@@ -9,8 +9,6 @@ export default {
         // 用户登录后，就算刷新页面也能再次计算出 user_avatar
         // 后端传 URL 必须先用 base64 编码，所以这里还要多进行一次 atob 解码 base64 字符串
         user_avatar: window.localStorage.getItem('madblog-token') ? atob(JSON.parse(atob(window.localStorage.getItem('madblog-token').split('.')[1])).user_avatar) : '',
-        // 用户未读消息计数
-        new_messages_count: window.localStorage.getItem('madblog-token') ? JSON.parse(atob(window.localStorage.getItem('madblog-token').split('.')[1])).new_messages_count : 0
     },
     loginAction() {
         if (this.debug) { console.log('loginAction triggered') }

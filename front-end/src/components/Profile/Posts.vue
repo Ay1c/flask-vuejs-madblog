@@ -188,7 +188,7 @@ export default {
       }
       // 先隐藏 Modal
       $('#editPostModal').modal('hide')
-      const path = `/api/posts/${this.editPostForm.id}`
+      const path = `/posts/${this.editPostForm.id}`
       const payload = {
         title: this.editPostForm.title,
         summary: this.editPostForm.summary,
@@ -230,7 +230,7 @@ export default {
         cancelButtonText: 'No, cancel!'
       }).then((result) => {
         if(result.value) {
-          const path = `/api/posts/${post.id}`
+          const path = `/posts/${post.id}`
           this.$axios.delete(path)
             .then((response) => {
               // handle success
