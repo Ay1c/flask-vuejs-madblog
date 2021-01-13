@@ -1,7 +1,7 @@
 from datetime import datetime
 from operator import itemgetter
 import re
-from flask import request, jsonify, url_for, g, current_app
+from flask import json, request, jsonify, url_for, g, current_app
 from app.api import bp
 from app.api.auth import token_auth
 from app.api.errors import bad_request, error_response
@@ -459,6 +459,9 @@ def get_user_messages_senders(id):
     new_items = []  # 最后一条是新的
     not_new_items = []  # 最后一条不是新的
     for item in data['items']:
+        # 判断我有没有拉黑他
+        if user.is_blocking(User.query.get(item['sender']['id'])):
+            item['is_blocking'] = True
         # item 是他发的最后一条，如果最后一条不是新的，肯定就没有啦
         if item['timestamp'] > last_read_time:
             item['is_new'] = True
@@ -517,3 +520,37 @@ def get_user_history_messages(id):
     messages.sort(key=data['items'].index)  # 保持 messages 列表元素的顺序跟 data['items'] 一样
     data['items'] = messages
     return jsonify(data)
+
+
+@bp.route('/block/<int:id>', methods=['GET'])
+@token_auth.login_required
+def block(id):
+    '''开始拉黑一个用户'''
+    user = User.query.get_or_404(id)
+    if g.current_user == user:
+        return bad_request('You cannot block yourself.')
+    if g.current_user.is_blocking(user):
+        return bad_request('You have already blocked that user.')
+    g.current_user.block(user)
+    db.session.commit()
+    return jsonify({
+        'status': 'success',
+        'message': 'You are now blocking %s.' % (user.name if user.name else user.username)
+    })
+
+
+@bp.route('/unblock/<int:id>', methods=['GET'])
+@token_auth.login_required
+def unblock(id):
+    '''取消拉黑一个用户'''
+    user = User.query.get_or_404(id)
+    if g.current_user == user:
+        return bad_request('You cannot unblock yourself.')
+    if not g.current_user.is_blocking(user):
+        return bad_request('You are not blocking this user.')
+    g.current_user.unblock(user)
+    db.session.commit()
+    return jsonify({
+        'status': 'success',
+        'message': 'You are not blocking %s anymore.' % (user.name if user.name else user.username)
+    })

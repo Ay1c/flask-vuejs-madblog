@@ -24,6 +24,9 @@ def create_message():
     user = User.query.get_or_404(int(data.get('recipient_id')))
     if g.current_user == user:
         return bad_request('You cannot sand private message to yourself.')
+    if user.is_blocking(g.current_user):
+        return bad_request('You are in the blacklist of {}'.format(user.name if user.name else user.username))
+
     message = Message()
     message.from_dict(data)
     message.sender = g.current_user
