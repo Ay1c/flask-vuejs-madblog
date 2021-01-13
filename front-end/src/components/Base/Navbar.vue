@@ -32,11 +32,10 @@
         <ul v-if="sharedState.is_authenticated" class="nav navbar-nav navbar-right">
           <li class="nav-item g-mr-20">
             <router-link v-bind:to="{ path: '/notifications/comments' }" class="nav-link"><i class="icon-education-033 u-line-icon-pro g-color-red g-font-size-16 g-pos-rel g-top-2 g-mr-3"></i> Notifications <span id="new_notifications_count" style="visibility: hidden;" class="u-label g-font-size-11 g-bg-aqua g-rounded-20 g-px-10">0</span></router-link>
-            <span v-if="total_notifications_count" class="u-label g-font-size-11 g-bg-pink g-rounded-20 g-px-8 g-ml-15">{{ total_notifications_count }}</span>
           </li>
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-              <img v-bind:src="sharedState.user_avatar"> {{ sharedState.user_name }}
+              <img v-bind:src="sharedState.user_avatar" class="g-brd-around g-brd-gray-light-v3 g-pa-2 rounded-circle rounded mCS_img_loaded"> {{ sharedState.user_name }}
             </a>
             <div class="dropdown-menu" aria-labelledby="navbarDropdown">
               <router-link v-bind:to="{ path: `/user/${sharedState.user_id}` }" class="dropdown-item"><i class="icon-star g-pos-rel g-top-1 g-mr-5"></i> Your profile</router-link>
@@ -77,11 +76,12 @@ export default {
     }
   },
   mounted () {
-    // 轮询 /api/users/<int:id>/notifications/ 请求用户的新通知
+    // 轮询 /users/<int:id>/notifications/ 请求用户的新通知
     $(function() {
       let since = 0
       let total_notifications_count = 0  // 总通知计数
       let unread_recived_comments_count = 0  // 收到的新评论通知计数
+      let unread_messages_count = 0  // 收到的新私信通知计数
       let unread_follows_count = 0  // 新粉丝通知计数
       let unread_likes_count = 0  // 新的喜欢或赞的通知计数
       let unread_followeds_posts_count = 0  // 用户关注的人的新文章通知计数
@@ -101,6 +101,10 @@ export default {
                     unread_recived_comments_count = response.data[i].payload
                     break
                   
+                  case 'unread_messages_count':
+                    unread_messages_count = response.data[i].payload
+                    break
+                  
                   case 'unread_follows_count':
                     unread_follows_count = response.data[i].payload
                     break
@@ -114,7 +118,7 @@ export default {
                 }
                 since = response.data[i].timestamp
               }
-              total_notifications_count = unread_recived_comments_count + unread_follows_count + unread_likes_count + unread_followeds_posts_count
+              total_notifications_count = unread_recived_comments_count + unread_messages_count + unread_follows_count + unread_likes_count + unread_followeds_posts_count
               // 每一次请求之后，根据 total_notifications_count 的值来显示或隐藏徽标
               $('#new_notifications_count').text(total_notifications_count)
               $('#new_notifications_count').css('visibility', total_notifications_count ? 'visible' : 'hidden');

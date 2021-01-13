@@ -47,9 +47,9 @@
               <i class="icon-user-unfollow g-pos-rel g-top-1 g-mr-5"></i> Unfollow
             </button>
 
-            <button v-if="$route.params.id != sharedState.user_id" class="btn btn-block u-btn-outline-aqua g-rounded-50 g-py-12 g-mb-10" data-toggle="modal" data-target="#sendMessageModal">
-              <i class="icon-envelope g-pos-rel g-top-1 g-mr-5"></i> Send private message
-            </button>
+            <router-link v-if="$route.params.id != sharedState.user_id" v-bind:to="{ name: 'MessagesHistoryResource', query: { from: $route.params.id } }" class="btn btn-block u-btn-outline-purple g-rounded-50 g-py-12 g-mb-10">
+              <i class="icon-bubble g-pos-rel g-top-1 g-mr-5"></i> Send private message
+            </router-link>
 
             <router-link v-if="$route.params.id == sharedState.user_id" v-bind:to="{ name: 'SettingProfile' }" class="btn btn-block u-btn-outline-primary g-rounded-50 g-py-12 g-mb-10">
               <i class="icon-settings g-pos-rel g-top-1 g-mr-5"></i> Settings
