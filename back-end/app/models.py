@@ -59,6 +59,14 @@ blacklist = db.Table(
     db.Column('timestamp', db.DateTime, default=datetime.utcnow)
 )
 
+# 喜欢文章
+posts_likes = db.Table(
+    'posts_likes',
+    db.Column('user_id', db.Integer, db.ForeignKey('users.id')),
+    db.Column('post_id', db.Integer, db.ForeignKey('posts.id')),
+    db.Column('timestamp', db.DateTime, default=datetime.utcnow)
+)
+
 
 class User(PaginatedAPIMixin, db.Model):
     # 设置数据库表名，Post模型中的外键 user_id 会引用 users.id
@@ -116,6 +124,9 @@ class User(PaginatedAPIMixin, db.Model):
         primaryjoin=(blacklist.c.user_id == id),
         secondaryjoin=(blacklist.c.block_id == id),
         backref=db.backref('sufferers', lazy='dynamic'), lazy='dynamic')
+
+    # 用户最后一次查看 收到的文章被喜欢 页面的时间，用来判断哪些喜欢是新的
+    last_posts_likes_read_time = db.Column(db.DateTime)
 
     def __repr__(self):
         return '<User {}>'.format(self.username)
@@ -303,6 +314,24 @@ class User(PaginatedAPIMixin, db.Model):
         if self.is_blocking(user):
             self.harassers.remove(user)
 
+    def new_posts_likes(self):
+        '''用户收到的文章被喜欢的新计数'''
+        last_read_time = self.last_posts_likes_read_time or datetime(1900, 1, 1)
+        # 当前用户发布的文章中，哪些文章被喜欢了
+        posts = self.posts.join(posts_likes).all()
+        # 新的喜欢记录计数
+        new_likes_count = 0
+        for p in posts:
+            # 获取喜欢时间
+            for u in p.likers:
+                if u != self:  # 用户自己喜欢自己的文章不需要被通知
+                    res = db.engine.execute("select * from posts_likes where user_id={} and post_id={}".format(u.id, p.id))
+                    timestamp = datetime.strptime(list(res)[0][2], '%Y-%m-%d %H:%M:%S.%f')
+                    # 判断本条喜欢记录是否为新的
+                    if timestamp > last_read_time:
+                        new_likes_count += 1
+        return new_likes_count
+
 
 class Post(PaginatedAPIMixin, db.Model):
     __tablename__ = 'posts'
@@ -317,6 +346,9 @@ class Post(PaginatedAPIMixin, db.Model):
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     comments = db.relationship('Comment', backref='post', lazy='dynamic',
                                cascade='all, delete-orphan')
+
+    # 博客文章与喜欢/收藏它的人是多对多关系
+    likers = db.relationship('User', secondary=posts_likes, backref=db.backref('liked_posts', lazy='dynamic'))
 
     def __repr__(self):
         return '<Post {}>'.format(self.title)
@@ -338,13 +370,23 @@ class Post(PaginatedAPIMixin, db.Model):
             'body': self.body,
             'timestamp': self.timestamp,
             'views': self.views,
+            'likers_id': [user.id for user in self.likers],
+            'likers': [
+                {
+                    'id': user.id,
+                    'username': user.username,
+                    'name': user.name,
+                    'avatar': user.avatar(128)
+                } for user in self.likers
+            ],
             'author': {
                 'id': self.author.id,
                 'username': self.author.username,
                 'name': self.author.name,
                 'avatar': self.author.avatar(128)
             },
-            'comments_count': self.comments.count(),
+            # 'likers_count': self.likers.count(),
+            # 'comments_count': self.comments.count(),
             '_links': {
                 'self': url_for('api.get_post', id=self.id),
                 'author_url': url_for('api.get_user', id=self.author_id),
@@ -357,6 +399,20 @@ class Post(PaginatedAPIMixin, db.Model):
         for field in ['title', 'summary', 'body', 'timestamp', 'views']:
             if field in data:
                 setattr(self, field, data[field])
+
+    def is_liked_by(self, user):
+        '''判断用户 user 是否已经收藏过该文章'''
+        return user in self.likers
+
+    def liked_by(self, user):
+        '''收藏'''
+        if not self.is_liked_by(user):
+            self.likers.append(user)
+
+    def unliked_by(self, user):
+        '''取消收藏'''
+        if self.is_liked_by(user):
+            self.likers.remove(user)
 
 
 db.event.listen(Post.body, 'set', Post.on_changed_body)  # body 字段有变化时，执行 on_changed_body() 方法
