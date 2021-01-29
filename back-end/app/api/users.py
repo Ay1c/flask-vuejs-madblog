@@ -1,15 +1,15 @@
 from datetime import datetime
 from operator import itemgetter
 import re
-
 from sqlalchemy.util.compat import b
 from flask import json, request, jsonify, url_for, g, current_app
 from app.api import bp
 from app.api.auth import token_auth
 from app.api.errors import bad_request, error_response
 from app import db
-from app.models import comments_likes, posts_likes, User, Post, Comment, Notification, Message
+from app.models import comments_likes, posts_likes, User, Post, Comment, Notification, Message, Permission, Task
 from app.utils.email import send_email
+from app.utils.decorator import permission_required
 
 
 @bp.route('/users', methods=['POST'])
@@ -142,7 +142,7 @@ def update_user(id):
 def delete_user(id):
     '''删除一个用户'''
     user = User.query.get_or_404(id)
-    if g.current_user != user:
+    if g.current_user != user and not g.current_user.can(Permission.ADMIN):
         return error_response(403)
     db.session.delete(user)
     db.session.commit()
@@ -154,6 +154,7 @@ def delete_user(id):
 ###
 @bp.route('/follow/<int:id>', methods=['GET'])
 @token_auth.login_required
+@permission_required(Permission.FOLLOW)
 def follow(id):
     '''开始关注一个用户'''
     user = User.query.get_or_404(id)
@@ -173,6 +174,7 @@ def follow(id):
 
 @bp.route('/unfollow/<int:id>', methods=['GET'])
 @token_auth.login_required
+@permission_required(Permission.FOLLOW)
 def unfollow(id):
     '''取消关注一个用户'''
     user = User.query.get_or_404(id)
@@ -551,9 +553,14 @@ def get_user_history_messages(id):
     data['items'] = messages
     return jsonify(data)
 
+###
+# 拉黑/取消拉黑
+###
+
 
 @bp.route('/block/<int:id>', methods=['GET'])
 @token_auth.login_required
+@permission_required(Permission.FOLLOW)
 def block(id):
     '''开始拉黑一个用户'''
     user = User.query.get_or_404(id)
@@ -571,6 +578,7 @@ def block(id):
 
 @bp.route('/unblock/<int:id>', methods=['GET'])
 @token_auth.login_required
+@permission_required(Permission.FOLLOW)
 def unblock(id):
     '''取消拉黑一个用户'''
     user = User.query.get_or_404(id)
@@ -811,3 +819,20 @@ def update_password():
         'status': 'success',
         'message': 'Your password has been updated.'
     })
+
+
+@bp.route('/users/<int:id>/tasks/', methods=['GET'])
+@token_auth.login_required
+def get_user_tasks_in_progress(id):
+    '''返回用户所有正在运行中的后台任务'''
+    user = User.query.get_or_404(id)
+    if g.current_user != user:
+        return error_response(403)
+    page = request.args.get('page', 1, type=int)
+    per_page = min(
+        request.args.get(
+            'per_page', current_app.config['TASKS_PER_PAGE'], type=int), 100)
+    data = Task.to_collection_dict(
+        Task.query.filter_by(user=user, complete=False), page, per_page,
+        'api.get_user_tasks_in_progress', id=id)
+    return jsonify(data)

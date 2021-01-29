@@ -11,6 +11,7 @@ class Config(object):
         'sqlite:///' + os.path.join(basedir, 'app.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     # 邮件配置
+    ADMINS = ['ysdsr6250@163.com']
     MAIL_SERVER = 'smtp.qq.com'
     MAIL_PORT = 465
     MAIL_USE_SSL = 1
@@ -22,3 +23,8 @@ class Config(object):
     USERS_PER_PAGE = 10
     COMMENTS_PER_PAGE = 10
     MESSAGES_PER_PAGE = 10
+    TASKS_PER_PAGE = 10
+    # Redis 用于 RQ 任务队列
+    REDIS_URL = os.environ.get('REDIS_URL') or 'redis://'
+    # Elasticsearch 全文检索
+    ELASTICSEARCH_URL = os.environ.get('ELASTICSEARCH_URL') or '127.0.0.1:9200'

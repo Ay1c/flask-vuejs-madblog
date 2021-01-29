@@ -21,6 +21,9 @@
           <li class="nav-item">
             <router-link to="/ping" class="nav-link">Ping</router-link>
           </li>
+          <li class="nav-item" v-if="sharedState.is_authenticated && sharedState.user_perms.includes('admin')">
+            <router-link to="/admin" class="nav-link">Admin</router-link>
+          </li>
         </ul>
         
         <form v-if="sharedState.is_authenticated" class="form-inline navbar-left mr-auto">
@@ -119,6 +122,9 @@ export default {
                     break
                   case 'unread_followeds_posts_count':
                     unread_followeds_posts_count = response.data[i].payload
+                    break
+                  case 'task_progress':
+                    $('#' + response.data[i].payload.task_id).text(response.data[i].payload.description + ' ' + response.data[i].payload.progress + '%')
                     break
                 }
                 since = response.data[i].timestamp

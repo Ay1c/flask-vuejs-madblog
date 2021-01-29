@@ -5,9 +5,9 @@
 
 
   // 基础配置
-  axios.defaults.baseURL = 'http://localhost:5000/api'
+  axios.defaults.baseURL = 'http://192.168.175.3:5000/api'
       // axios.defaults.timeout = 5000  // 超时时间（毫秒）
-      // axios.defaults.retry = 2  // 重试次数
+      //axios.defaults.retry = 2 // 重试次数
       // axios.defaults.retryDelay = 100  // 重试之间的间隔时间（毫秒）
 
   // 请求拦截器

@@ -1,31 +1,41 @@
 <template>
   <section>
-    <!-- Modal: Send Message -->
-    <div class="modal fade" id="sendMessageModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <!-- Modal: Send Messages -->
+    <div data-backdrop="static" class="modal fade" id="sendMessagesModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="sendMessageModalTitle">Send Private Message</h5>
+            <h5 class="modal-title">群发私信</h5>
             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
               <span aria-hidden="true">&times;</span>
             </button>
           </div>
           <div class="modal-body">
-          
-            <form id="sendMessageForm" @submit.prevent="onSubmitSendMessage" @reset.prevent="onResetSendMessage">
+
+            <form id="sendMessagesForm" @submit.prevent="onSubmitSendMessages" @reset.prevent="onResetSendMessages">
               <div class="form-group">
-                <textarea v-model="sendMessageForm.body"  class="form-control" id="sendMessageFormBody" rows="5" placeholder=" 悄悄话..."></textarea>
-                <small class="form-control-feedback" v-show="sendMessageForm.bodyError">{{ sendMessageForm.bodyError }}</small>
+                <textarea v-model="sendMessagesForm.body" class="form-control" id="sendMessagesFormBody" rows="5" placeholder=" 内容"></textarea>
+                <small class="form-control-feedback" v-show="sendMessagesForm.bodyError">{{ sendMessagesForm.bodyError }}</small>
               </div>
               <button type="reset" class="btn btn-secondary">Cancel</button>
-              <button type="submit" class="btn btn-primary">Submit</button>
+              <button type="submit" class="btn btn-primary">Send</button>
             </form>
-    
+
           </div>
         </div>
       </div>
     </div>
-    <!-- End Modal: Send Message -->
+    <!-- End Modal: Send Messages -->
+
+    <!-- 用户所有运行中的后台任务的进度 -->
+    <div class="container">
+      <alert 
+        v-for="(alert, index) in alerts" :key="index"
+        v-bind:id="alert.id"
+        v-bind:variant="alert.variant"
+        v-bind:message="alert.message">
+      </alert>
+    </div>
 
     <!-- 用户信息 -->
     <div v-if="user" class="container">
@@ -54,6 +64,10 @@
             <router-link v-if="$route.params.id == sharedState.user_id" v-bind:to="{ name: 'SettingProfile' }" class="btn btn-block u-btn-outline-primary g-rounded-50 g-py-12 g-mb-10">
               <i class="icon-settings g-pos-rel g-top-1 g-mr-5"></i> Settings
             </router-link>
+
+            <button v-if="$route.params.id == sharedState.user_id && sharedState.user_perms.includes('admin')" data-toggle="modal" data-target="#sendMessagesModal" class="btn btn-block u-btn-outline-aqua g-rounded-50 g-py-12 g-mb-10">
+              <i class="icon-bubble g-pos-rel g-top-1 g-mr-5"></i> Send Messages
+            </button>
 
             <button v-if="$route.params.id == sharedState.user_id" v-on:click="onDeleteUser($route.params.id)" class="btn btn-block u-btn-outline-red g-rounded-50 g-py-12 g-mb-10">
               <i class="icon-ban g-pos-rel g-top-1 g-mr-5"></i> Delete Your Account
@@ -91,7 +105,7 @@
     <!-- 当前登录的用户发表新博客文章 -->
     <div class="container">
 
-      <div v-if="sharedState.is_authenticated && $route.params.id == sharedState.user_id" class="card border-0 g-mb-15">
+      <div v-if="sharedState.is_authenticated && $route.params.id == sharedState.user_id && sharedState.user_perms.includes('write')" class="card border-0 g-mb-15">
         <!-- Panel Header -->
         <div class="card-header d-flex align-items-center justify-content-between g-bg-gray-light-v5 border-0 g-mb-15">
           <h3 class="h6 mb-0">
@@ -106,7 +120,7 @@
         <!-- End Panel Header -->
       </div>
 
-      <form id="addPostForm" v-if="sharedState.is_authenticated && $route.params.id == sharedState.user_id" @submit.prevent="onSubmitAddPost" class="g-mb-40">
+      <form id="addPostForm" v-if="sharedState.is_authenticated && $route.params.id == sharedState.user_id && sharedState.user_perms.includes('write')" @submit.prevent="onSubmitAddPost" class="g-mb-40">
         <div class="form-group" v-bind:class="{'u-has-error-v1': postForm.titleError}">
           <input type="text" v-model="postForm.title" class="form-control" id="postFormTitle" placeholder="标题">
           <small class="form-control-feedback" v-show="postForm.titleError">{{ postForm.titleError }}</small>
@@ -131,8 +145,13 @@ import store from '../../store'
 import '../../assets/bootstrap-markdown/js/bootstrap-markdown.js'
 import '../../assets/bootstrap-markdown/js/bootstrap-markdown.zh.js'
 import '../../assets/bootstrap-markdown/js/marked.js'
+import Alert from '../Base/Alert'
+
 export default {
   name: 'User',  //this is the name of the component
+  components:{
+    alert: Alert
+  },
   data () {
     return {
       sharedState: store.state,
@@ -145,11 +164,12 @@ export default {
         titleError: null,
         bodyError: null
       }, 
-      sendMessageForm: {
+      sendMessagesForm: {
         body: '',
         errors: 0,  // 发送站内消息时，表单验证是否有错误
         bodyError: null
-      }
+      },
+      alerts:[]
     }
   },
   computed: {
@@ -249,51 +269,89 @@ export default {
         }
       })
     },
-    onSubmitSendMessage () {
-      this.sendMessageForm.errors = 0  // 重置
+    onSubmitSendMessages () {  // 群发私信
+      this.sendMessagesForm.bodyError = null  // 重置
       // 每次提交前先移除错误，不然错误就会累加
-      $('#sendMessageForm .form-control-feedback').remove()
-      $('#sendMessageForm .form-group.u-has-error-v1').removeClass('u-has-error-v1')
-      if (!this.sendMessageForm.body) {
-        this.sendMessageForm.errors++
-        this.sendMessageForm.bodyError = 'Body is required.'
+      $('#sendMessagesForm .form-control-feedback').remove()
+      $('#sendMessagesForm .form-group.u-has-error-v1').removeClass('u-has-error-v1')
+
+      if (!this.sendMessagesForm.body) {
+        this.sendMessagesForm.bodyError = 'Body is required.'
         // boostrap4 modal依赖jQuery，不兼容 vue.js 的双向绑定。所以要手动添加警示样式和错误提示
         // 给 bootstrap-markdown 编辑器内容添加警示样式，而不是添加到 #post_body 上
-        $('#sendMessageForm .md-editor').closest('.form-group').addClass('u-has-error-v1')  // Bootstrap 4
-        $('#sendMessageForm .md-editor').after('<small class="form-control-feedback">' + this.sendMessageForm.bodyError + '</small>')
+        $('#sendMessagesForm .md-editor').closest('.form-group').addClass('u-has-error-v1')  // Bootstrap 4
+        $('#sendMessagesForm .md-editor').after('<small class="form-control-feedback">' + this.sendMessagesForm.bodyError + '</small>')
       } else {
-        this.sendMessageForm.bodyError = null
+        this.sendMessagesForm.bodyError = null
       }
-      if (this.sendMessageForm.errors > 0) {
+
+      if (this.sendMessagesForm.bodyError) {
         // 表单验证没通过时，不继续往下执行，即不会通过 axios 调用后端API
         return false
       }
-      // 先隐藏 Modal
-      $('#sendMessageModal').modal('hide')
+
+      const path = `/send-messages/`
       const payload = {
-        recipient_id: this.$route.params.id,
-        body: this.sendMessageForm.body
+        body: this.sendMessagesForm.body
       }
-      this.$axios.post('/messages/', payload)
+      this.$axios.post(path, payload)
+        .then((response) => {
+          // 重新加载，看看没有有后台任务Alert
+          this.get_user_tasks_in_progress(this.$route.params.id)
+          // 先隐藏 Modal
+          $('#sendMessagesModal').modal('hide')
+          // handle success
+          this.$toasted.success(response.data.message, { icon: 'fingerprint' })
+          this.sendMessagesForm.body = ''
+        })
+        .catch((error) => {
+          // 每次提交前先移除错误，不然错误就会累加
+          $('#sendMessagesForm .form-control-feedback').remove()
+          $('#sendMessagesForm .form-group.u-has-error-v1').removeClass('u-has-error-v1')
+          // handle error
+          if (error.response.data.message instanceof Array) {
+            for (var field in error.response.data.message) {
+              if (field == 'body') {
+                this.sendMessagesForm.bodyError = error.response.data.message[field]
+                // boostrap4 modal依赖jQuery，不兼容 vue.js 的双向绑定。所以要手动添加警示样式和错误提示
+                // 给 bootstrap-markdown 编辑器内容添加警示样式，而不是添加到 #post_body 上
+                $('#sendMessagesForm .md-editor').closest('.form-group').addClass('u-has-error-v1')  // Bootstrap 4
+                $('#sendMessagesForm .md-editor').after('<small class="form-control-feedback">' + this.sendMessagesForm.bodyError + '</small>')
+              } else {
+                this.$toasted.error(error.response.data.message[field], { icon: 'fingerprint' })
+              }
+            }
+          } else {
+            this.$toasted.error(error.response.data.message, { icon: 'fingerprint' })
+          }
+        })
+    },
+    onResetSendMessages () {
+      // 先移除错误
+      $('#sendMessagesForm .form-control-feedback').remove()
+      $('#sendMessagesForm .form-group.u-has-error-v1').removeClass('u-has-error-v1')
+      // 再隐藏 Modal
+      $('#sendMessagesModal').modal('hide')
+      this.$toasted.info('Cancelled, not send messages.', { icon: 'fingerprint' })
+    },
+    get_user_tasks_in_progress (id) {
+      const path = `/users/${id}/tasks`
+      this.$axios.get(path)
         .then((response) => {
           // handle success
-          this.$toasted.success(`Successed send the private message to ${this.user.username}.`, { icon: 'fingerprint' })
-          this.sendMessageForm.body = ''
+          // 如果当前用户有正在运行的后台任务，则自动创建 Alerts
+          for (var i = 0; i < response.data.items.length; i++) {
+            var alert = new Object()
+            alert.id = response.data.items[i].id
+            alert.variant = 'info'
+            alert.message = response.data.items[i].description + ' ' + response.data.items[i].progress + '%'
+            this.alerts.push(alert)
+          }
         })
         .catch((error) => {
           // handle error
-          console.log(error.response.data)
-          this.$toasted.error(error.response.data.message, { icon: 'fingerprint' })
+          console.error(error)
         })
-    },
-    onResetSendMessage () {
-      // 先移除错误
-      $('#sendMessageForm .form-control-feedback').remove()
-      $('#sendMessageForm .form-group.u-has-error-v1').removeClass('u-has-error-v1')
-      // 再隐藏 Modal
-      $('#sendMessageModal').modal('hide')
-      // this.getPosts()
-      this.$toasted.info(`Cancelled, no words send to ${this.user.username}.`, { icon: 'fingerprint' })
     },
     onSubmitAddPost (e) {
       this.postForm.errors = 0  // 重置
@@ -341,6 +399,7 @@ export default {
   },
   created () {
     const user_id = this.$route.params.id
+    this.get_user_tasks_in_progress(user_id)
     this.getUser(user_id)
     // 初始化 bootstrap-markdown 插件
     $(document).ready(function() {
@@ -355,6 +414,7 @@ export default {
   // 当路由变化后重新加载数据
   beforeRouteUpdate (to, from, next) {
     next()
+    this.get_user_tasks_in_progress(to.params.id)
     this.getUser(to.params.id)
     // 初始化 bootstrap-markdown 插件
     $(document).ready(function() {

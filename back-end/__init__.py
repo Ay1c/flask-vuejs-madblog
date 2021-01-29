@@ -1,11 +1,11 @@
-from flask import Flask
+from flask import Flask, app
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_mail import Mail
 from config import Config
 from redis import Redis
-from elasticsearch import Elasticsearch
+import rq_dashboard
 import rq
 
 
@@ -15,6 +15,8 @@ db = SQLAlchemy()
 migrate = Migrate()
 # Flask-Mail plugin
 mail = Mail()
+# CORS
+cors = CORS(app)
 
 
 def create_app(config_class=Config):
@@ -23,7 +25,7 @@ def create_app(config_class=Config):
 
     configure_app(app, config_class)
     # Enable CORS
-    CORS(app)
+    cors.init_app(app)
     # Init Flask-SQLAlchemy
     db.init_app(app)
     # Init Flask-Migrate
@@ -34,6 +36,8 @@ def create_app(config_class=Config):
     # 注册 blueprint
     from app.api import bp as api_bp
     app.register_blueprint(api_bp, url_prefix='/api')
+    app.config.from_object(rq_dashboard.default_settings)
+    app.register_blueprint(rq_dashboard.blueprint, url_prefix="/rq")
 
     return app
 
@@ -45,9 +49,6 @@ def configure_app(app, config_class):
     # 整合RQ任务队列
     app.redis = Redis.from_url(app.config['REDIS_URL'])
     app.task_queue = rq.Queue('madblog-tasks', connection=app.redis, default_timeout=3600)  # 设置任务队列中各任务的执行最大超时时间为 1 小时
-    # Elasticsearch全文检索
-    app.elasticsearch = Elasticsearch([app.config['ELASTICSEARCH_URL']]) \
-        if app.config['ELASTICSEARCH_URL'] else None
 
 
 from app import models
